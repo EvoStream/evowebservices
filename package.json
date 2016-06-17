@@ -1,0 +1,26 @@
+{
+  "name": "evowebservices",
+  "description": "EMS Web Services are a suite of Node.js scripts which can be hosted by any Node.js Server and leverage the EMS’s Event Notification System and Runtime-APIs.",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Toni Panganiban",
+    "email": "tpanganiban@evostream.com",
+    "url": "https://evostream.com/"
+  },
+  "dependencies": {
+    "body-parser": "~1.13.2",
+    "comment-json": "^1.1.3",
+    "concat-stream": "^1.5.1",
+    "debug": "~2.2.0",
+    "express": "~4.13.1",
+    "morgan": "~1.6.1",
+    "request-enhanced": "^0.1.1",
+    "s3": "^4.4.0",
+    "winston": "^2.2.0"
+  }
+}

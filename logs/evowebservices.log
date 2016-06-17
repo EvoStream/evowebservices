@@ -1,0 +1,9 @@
+2016-06-14T06:10:42.438Z - info: exports.getPluginsStack
+2016-06-14T06:10:42.441Z - info: plugin name i StreamRecorder
+2016-06-14T06:10:42.444Z - info: StreamRecorder.prototype.init 
+2016-06-15T07:51:55.315Z - info: exports.getPluginsStack
+2016-06-15T07:51:55.318Z - info: plugin name i StreamRecorder
+2016-06-15T07:51:55.353Z - info: StreamRecorder.prototype.init 
+2016-06-15T07:52:56.486Z - info: exports.getPluginsStack
+2016-06-15T07:52:56.488Z - info: plugin name i StreamRecorder
+2016-06-15T07:52:56.491Z - info: StreamRecorder.prototype.init 
