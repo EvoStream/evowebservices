@@ -10,6 +10,8 @@
 var express = require('express');
 var router = express.Router();
 
+console.log("evowebservices:server Listening on port 4000 ");
+
 var winston = require('winston');
 
 var jsonComment = require('comment-json');
