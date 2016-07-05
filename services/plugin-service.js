@@ -18,7 +18,7 @@ var winston = require('winston');
 
 exports.getPluginsStack = function() {
 
-    winston.log("info", "exports.getPluginsStack");
+    winston.log("info", "Get enabled Plugins");
 
     var pluginStack = new Object();
 

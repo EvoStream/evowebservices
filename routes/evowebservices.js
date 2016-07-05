@@ -10,7 +10,7 @@
 var express = require('express');
 var router = express.Router();
 
-console.log("evowebservices:server Listening on port 4000 ");
+console.log("STARTED: evowebservices:server Listening on port 4000 ");
 
 var winston = require('winston');
 
@@ -29,13 +29,15 @@ winston.add(winston.transports.File, {
 }); 
 winston.remove(winston.transports.Console);
 
+winston.log("info", "STARTED: evowebservices:server Listening on port 4000 ");
+
 //load the service that initializes the plugins 
 var pluginService = require('../services/plugin-service');
 //load Enabled Plugins
 var pluginStack = pluginService.getPluginsStack();
 
 router.post('/', function(req, res, next) {
-    winston.log("info", "EVOWEBSERVICES EVOWEBSERVICES RAW POST from EMS");    
+    winston.log("info", "EVOWEBSERVICES RAW POST DATA from EMS");
 
     //Get the RAW POST DATA
     var event = req.body;
