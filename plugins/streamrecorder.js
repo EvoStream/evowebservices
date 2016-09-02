@@ -75,8 +75,9 @@ StreamRecorder.prototype.processEvent = function(event) {
         var parameters = {
             localStreamName: localStreamName,
             pathtofile: recordFileDirectory,
+            overwrite: 0,
             keepAlive: 1,
-            // type: 'flv',
+            type: 'mp4',
             _localStreamName: localStreamName
         };
 
@@ -98,6 +99,9 @@ StreamRecorder.prototype.processEvent = function(event) {
         //Apply the logs
         winston.log("info", "StreamRecorder outStreamCreated");
 
+        var periodTime = parseInt(this.settings.period_time, 10);
+
+
         //1. Get the Recorded stream
         recordedStream = event.payload.recordSettings._localStreamName;
         localStreamName = event.payload.name;
@@ -109,9 +113,8 @@ StreamRecorder.prototype.processEvent = function(event) {
             return true;
         }
 
-        var periodTime = parseInt(this.settings.period_time, 10);
-
         //Apply the logs
+        winston.log("verbose", "StreamRecorder periodTime " + periodTime);
         winston.log("verbose", "StreamRecorder localStreamName " + localStreamName);
         winston.log("verbose", "StreamRecorder recordedStream " + recordedStream);
         winston.log("verbose", "StreamRecorder uniqueId " + uniqueId);
@@ -134,7 +137,6 @@ StreamRecorder.prototype.processEvent = function(event) {
                         //by returning true
                         return true;
                     }
-
                 }
             }
 
@@ -169,47 +171,58 @@ StreamRecorder.prototype.processEvent = function(event) {
         //Apply the logs
         winston.log("verbose", "StreamRecorder _uniqueId " + _uniqueId);
 
-        //2. Execute ShutdownStream using the uniqueId
-        var parameters = {
-            id: _uniqueId,
-            permanently: 0
-        };
 
-        ems.shutdownStream(parameters, function(result) {
-
-            //Remove the timer after the shutdown
-            var parameters = null;
-            ems.listTimers(parameters, function(result) {
+        //Remove the timer 
+        var parameters = null;
+        ems.listTimers(parameters, function(result) {
 
 
-                if (result.data != null) {
-                    var timerListData = result.data;
+            if (result.data != null) {
+                var timerListData = result.data;
 
-                    //Get the timer id using the _localStreamName and remove it
-                    for (var i in timerListData) {
 
-                        //Apply the logs
-                        winston.log("verbose", "StreamRecorder timerListData " + JSON.stringify(timerListData));
 
-                        if (timerListData[i]._uniqueId == _uniqueId) {
-                            //Execute api for removing a timer
+                //Get the timer id using the _localStreamName and remove it
+                for (var i in timerListData) {
+
+                    //Apply the logs
+                    winston.log("verbose", "StreamRecorder timerListData " + JSON.stringify(timerListData));
+
+                    if (timerListData[i]._uniqueId == _uniqueId) {
+                        //Execute api for removing a timer
+                        var parameters = {
+                            id: timerListData[i].timerId
+                        };
+                        ems.removeTimer(parameters, function(result) {
+                            winston.log("info", "StreamRecorder removeTimer status " + result.status);
+
+                            if (result.status == "FAIL") {
+                                winston.log("error", "StreamRecorder removeTimer status " + result.status);
+
+                                return false;
+                            }
+
+                            //Execute ShutdownStream using the uniqueId
                             var parameters = {
-                                id: timerListData[i].timerId
+                                id: _uniqueId,
+                                permanently: 0
                             };
-                            ems.removeTimer(parameters, function(result) {
-                                winston.log("info", "StreamRecorder removeTimer status " + result.status);
 
-                                if (result.status == "FAIL") {
-                                    winston.log("error", "StreamRecorder removeTimer status " + result.status);
+                            ems.shutdownStream(parameters, function(result) {
 
-                                    return false;
+                                winston.log("info", "StreamRecorder shutdownStream status " + result.status);
+
+                                if (result.status == "SUCCESS") {
+
+                                    var localStreamName = result.data.streamInfo.recordSettings.localStreamName;
+                                    var recordFileDirectory = result.data.streamInfo.pathToFile;
+
                                 }
-
                             });
-                        }
+                        });
                     }
                 }
-            });
+            }
         });
     }
 

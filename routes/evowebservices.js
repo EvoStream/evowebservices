@@ -18,16 +18,32 @@ var jsonComment = require('comment-json');
 var fs = require('fs');
 var configLog = jsonComment.parse(fs.readFileSync("./config/logging.json"), null, true);
 
+winston.addColors({
+  silly: 'blue',
+  debug: 'gray',
+  verbose: 'magenta',
+  info: 'green',
+  warn: 'yellow',
+  error: 'red'
+});
+
+winston.remove(winston.transports.Console);
+
 // set winston log
 winston.add(winston.transports.File, {
-    level: configLog.options.level,
-    filename: configLog.options.filename,
-    handleExceptions: configLog.options.handleExceptions,
-    json: configLog.options.json,
-    level: configLog.options.level,
-    maxsize: configLog.options.maxsize
-}); 
-winston.remove(winston.transports.Console);
+  level: configLog.options.level,
+  filename: "./logs/evowebservices." + process.pid + "." + new Date().getTime() + "-" + ".log",
+  handleExceptions: configLog.options.handleExceptions,
+  json: configLog.options.json,
+  maxsize: configLog.options.maxsize
+});
+
+winston.add(winston.transports.Console, {
+  level: configLog.options.level,
+  handleExceptions: configLog.options.handleExceptions,
+  colorize: true
+});
+
 
 winston.log("info", "STARTED: evowebservices:server Listening on port 4000 ");
 
@@ -37,40 +53,49 @@ var pluginService = require('../services/plugin-service');
 var pluginStack = pluginService.getPluginsStack();
 
 router.post('/', function(req, res, next) {
-    winston.log("info", "EVOWEBSERVICES RAW POST DATA from EMS");
+  winston.log("info", "evowebservices:server RAW POST DATA from EMS");
 
-    //Get the RAW POST DATA
-    var event = req.body;
-    var eventType = req.body.type
+  //Get the RAW POST DATA
+  var event = req.body;
+  var eventType = req.body.type
 
-    winston.log("verbose", "event " + JSON.stringify(event));
-    winston.log("info", "eventType " + eventType);
+  winston.log("verbose", "event: " + JSON.stringify(event));
+  winston.log("info", "eventType: " + eventType);
 
-    //Added the remoteIp
-    var remoteIp = req.ip.split(":").pop();
-    event.remoteIp = remoteIp;
+  var eventSupported = false;
+  var processEventStatus = false;
+  var remoteIp = null;
 
-    winston.log("verbose", "remoteIp " + remoteIp);
+  //Added the remoteIp
+  if (event.payload.ip == "") {
+    remoteIp = req.ip.split(":").pop();
+  } else {
+    remoteIp = event.payload.ip;
+  }
+  event.remoteIp = remoteIp;
 
-    var eventSupported = false;
-    var processEventStatus = false;
+  var remoteIp = event.payload.ip;
+  event.remoteIp = remoteIp;
 
-    for (var plugin in pluginStack) {
+  winston.log("verbose", "remoteIp: " + remoteIp);
 
-        winston.log("verbose", "plugin " + plugin);
 
-        eventSupported = pluginStack[plugin].supportsEvent(eventType);
+  for (var plugin in pluginStack) {
 
-        if (eventSupported == true) {
-            winston.log("verbose", "eventSupported " + eventSupported);
+    winston.log("info", "plugin: " + plugin);
 
-            processEventStatus = pluginStack[plugin].processEvent(event);
+    eventSupported = pluginStack[plugin].supportsEvent(eventType);
 
-            if (processEventStatus == false) {
-                winston.log("error", "Plugin: " + plugin + "failed ");
-            }
-        }
+    if (eventSupported == true) {
+      winston.log("verbose", "eventSupported: " + eventSupported);
+
+      processEventStatus = pluginStack[plugin].processEvent(event);
+
+      if (processEventStatus == false) {
+        winston.log("error", "Plugin: " + plugin + "failed ");
+      }
     }
+  }
 
 });
 

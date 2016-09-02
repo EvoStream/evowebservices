@@ -28,8 +28,7 @@
  */
 {
   "options": {
-    "level": "silly",
-    "filename": "./logs/evowebservices.log",
+    "level": "silly",    
     "handleExceptions": true,
     "json": false,
     "maxsize": 5242880
