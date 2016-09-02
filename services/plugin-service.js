@@ -18,7 +18,7 @@ var winston = require('winston');
 
 exports.getPluginsStack = function() {
 
-    winston.log("info", "exports.getPluginsStack");
+    winston.log("info", "Get enabled Plugins");
 
     var pluginStack = new Object();
 
@@ -27,7 +27,7 @@ exports.getPluginsStack = function() {
 
         if (config[i].plugin_switch == "enabled") {
 
-            winston.log("info", "plugin name i " + i);
+            winston.log("info", "plugin name: " + i);
 
             //call the plugin and create an instance of it
             var pluginPath = "../plugins/" + i.toLowerCase();

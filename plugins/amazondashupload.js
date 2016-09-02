@@ -8,32 +8,35 @@
  ***/
 
 var util = require('util');
-//Include the Base HLS Plugin for the application
-var BaseHLSPlugin = require('../base_plugins/basehlsplugin');
+//Include the Base DASH Plugin for the application
+var BaseDASHPlugin = require('../base_plugins/basehdsplugin');
 var s3 = require('s3');
 var winston = require('winston');
+
 var path = require('path');
+var fs = require('fs');
 
 /*
- * Amazon S3 Upload HLS Chunk Plugin
+ * Amazon S3 Upload DASH Chunk Plugin
  */
-var AmazonHLSUpload = function() {};
+var AmazonDASHUpload = function() {};
 
-//implement the BaseHLSPlugin
-util.inherits(AmazonHLSUpload, BaseHLSPlugin);
+//implement the BaseDASHPlugin
+util.inherits(AmazonDASHUpload, BaseDASHPlugin);
+
 
 /**
- * Initialize the settings for AmazonHLSUpload
+ * Initialize the settings for AmazonDASHUpload
  * @param array settings
  * @return boolean
  */
-AmazonHLSUpload.prototype.init = function(settings) {
+AmazonDASHUpload.prototype.init = function(settings) {
 
     //Apply Logs
-    winston.log("info", "AmazonHLSUpload.prototype.init ");
+    winston.log("info", "AmazonDASHUpload.prototype.init ");
 
     this.settings = settings;
-    this.AmazonHLSUploadCtr = 0;
+    this.AmazonDASHUploadCtr = 0;
 
     //set the s3 client 
     this.client = s3.createClient({
@@ -43,39 +46,36 @@ AmazonHLSUpload.prototype.init = function(settings) {
         multipartUploadThreshold: 20971520, // this is the default (20 MB) 
         multipartUploadSize: 15728640, // this is the default (15 MB) 
         s3Options: {
-            accessKeyId: this.settings.aws_access_key,
-            secretAccessKey: this.settings.aws_secret_key,
+            accessKeyId: settings.aws_access_key,
+            secretAccessKey: settings.aws_secret_key,
             // any other options are passed to new AWS.S3() 
             // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#constructor-property 
         },
         httpOptions: {
             timeout: 240000
-        },        
+        },
     });
 
 };
 
 /**
- * Execute process for AmazonHLSUpload
+ * Execute process for AmazonDASHUpload
  * @param array event
  * @return boolean
  */
-AmazonHLSUpload.prototype.processEvent = function(event) {
+AmazonDASHUpload.prototype.processEvent = function(event) {
 
     //Apply Logs
-    winston.log("info", "AmazonHLSUpload.prototype.processEvent ");
+    winston.log("info", "AmazonDASHUpload.prototype.processEvent ");
 
     //1. Get file from the event
     var file = event.payload.file;
-
-    //Apply the logs
-    winston.log("verbose", "AmazonHLSUpload file to be uploaded: " + file);
 
     //2. Setup the file directory the the directory where the file would be uploaded
     var uploadDirectory = this.getUploadDirectory(event.type, file);
 
     //Apply the logs
-    winston.log("verbose", "AmazonHLSUpload uploadDirectory " + JSON.stringify(uploadDirectory));
+    winston.log("verbose", "AmazonDASHUpload uploadDirectory " + JSON.stringify(uploadDirectory));
 
     //3. Set the S3 bucket parameters
     var params = {
@@ -93,40 +93,13 @@ AmazonHLSUpload.prototype.processEvent = function(event) {
     //4. Execute the file upload using s3
     var uploader = this.client.uploadFile(params);
     uploader.on('error', function(err) {
-        console.error("unable to upload:", err.stack);
-        winston.log('error', "AmazonHLSUpload unable to upload:", err.stack);
+        console.error("AmazonDASHUpload unable to upload:", err.stack);
+        winston.log("error", "AmazonDASHUpload unable to upload:", err.stack);
         return false;
     });
     uploader.on('end', function() {
-        winston.log('info', "AmazonHLSUpload done uploading file " + file);
+        winston.log("verbose", "AmazonDASHUpload done uploading file " + file);
     });
-
-
-    if (event.type == 'hlsChunkClosed') {
-        //4. Upload the Child Playlist after the  HLS Chunk
-        var params = {
-            localFile: uploadDirectory['cplaylistDir'],
-
-            s3Params: {
-                Bucket: this.settings.default_bucket,
-                Key: uploadDirectory['cplaylist'],
-                ACL: "public-read"
-                    // other options supported by putObject, except Body and ContentLength. 
-                    // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property 
-            },
-        };
-
-        //4. Execute the file upload using s3
-        var uploader = this.client.uploadFile(params);
-        uploader.on('error', function(err) {
-            console.error("unable to upload:", err.stack);
-            winston.log('error', "AmazonHLSUpload unable to upload:", err.stack);
-            return false;
-        });
-        uploader.on('end', function() {
-            winston.log('info', "AmazonHLSUpload done uploading file " + uploadDirectory['cplaylistDir']);
-        });
-    }
 
     return true;
 
@@ -138,17 +111,17 @@ AmazonHLSUpload.prototype.processEvent = function(event) {
  * @param string file
  * @return array uploadDirectory
  */
-AmazonHLSUpload.prototype.getUploadDirectory = function(eventType, file) {
+AmazonDASHUpload.prototype.getUploadDirectory = function(eventType, file) {
 
     //Apply Logs
-    winston.log("info", "AmazonHLSUpload.prototype.getUploadDirectory ");
+    winston.log("info", "AmazonDASHUpload.prototype.getUploadDirectory ");
 
     //1. Get the folder and file names from the file location
     var fileDirectory = file.split(path.sep);
     var uploadDirectory = new Object();
 
     //2. Set the uploading directory where the files would be uploaded
-    if (eventType == 'hlsMasterPlaylistUpdated') {
+    if (eventType == 'dashPlaylistUpdated') {
         uploadDirectory['mplaylist'] = fileDirectory.pop();
         uploadDirectory['groupName'] = fileDirectory.pop();
         uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['mplaylist'];
@@ -157,12 +130,11 @@ AmazonHLSUpload.prototype.getUploadDirectory = function(eventType, file) {
         uploadDirectory['chunk'] = fileDirectory.pop();
         uploadDirectory['localStreamName'] = fileDirectory.pop();
         uploadDirectory['groupName'] = fileDirectory.pop();
-        uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + '/' + uploadDirectory['chunk'];
-        uploadDirectory['cplaylist'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + '/playlist.m3u8';
-        uploadDirectory['cplaylistDir'] = path.dirname(file) + '/playlist.m3u8';
+        uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + uploadDirectory['chunk'];
     }
 
     return uploadDirectory;
+
 };
 
 /**
@@ -170,21 +142,21 @@ AmazonHLSUpload.prototype.getUploadDirectory = function(eventType, file) {
  * @param string eventType
  * @return boolean
  */
-AmazonHLSUpload.prototype.supportsEvent = function(eventType) {
+AmazonDASHUpload.prototype.supportsEvent = function(eventType) {
 
     //Apply the logs
-    winston.log("info", "AmazonHLSUpload.prototype.supportsEvent ");
+    winston.log("info", "AmazonDASHUpload.prototype.supportsEvent ");
 
     //Validate that Plugin supports the Event for Master Playlist
-    if (eventType == 'hlsMasterPlaylistUpdated') {
+    if (eventType == 'dashPlaylistUpdated') {
         return true;
     }
 
     //Validate that Plugin supports the Event for Chunk
-    if (eventType == 'hlsChunkClosed') {
+    if (eventType == 'dashChunkClosed') {
         return true;
     }
 
 };
 
-module.exports = AmazonHLSUpload;
+module.exports = AmazonDASHUpload;

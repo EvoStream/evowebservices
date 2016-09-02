@@ -65,7 +65,7 @@ module.exports = function(serverUrl) {
     this.buildqs = function(parameters) {
 
         //Apply Logs
-        winston.log("info", "EMS API this.buildqs ");
+        winston.log("verbose", "EMS API this.buildqs ");
 
         var qs = "?params=";
         var params = "";
@@ -73,6 +73,8 @@ module.exports = function(serverUrl) {
         for (var key in parameters) {
             params += key + "=" + parameters[key] + " ";
         }
+
+        winston.log("verbose", "EMS API parameters: " + params);
 
         var buffer = new Buffer(params);
         var params64 = buffer.toString('base64');
@@ -86,7 +88,7 @@ module.exports = function(serverUrl) {
     this.sendCommand = function(command, parameters, callbackResponse) {
 
         //Apply Logs
-        winston.log("info", "EMS API this.sendCommand ");
+        winston.log("verbose", "EMS API this.sendCommand ");
 
         var queryString = self.buildqs(parameters);
 
@@ -105,11 +107,14 @@ module.exports = function(serverUrl) {
             if (err) {
                 // console.log("err " + JSON.stringify(err));
                 console.log(err);
-                winston.log("EMS API this.sendCommand error: ", err);
+                winston.log("error", "EMS API this.sendCommand error: ", err);
                 return;
             }
 
             var reponseBody = JSON.parse(response);
+
+            //Apply Logs
+            winston.log("verbose", "response "+response);            
 
             return callbackResponse(reponseBody);
 

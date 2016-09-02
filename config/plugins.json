@@ -103,6 +103,25 @@
  * 
  */        
     "AmazonHLSUpload": {
+        "plugin_switch": "enabled",
+        "parameters": {
+            "aws_access_key": "",
+            "aws_secret_key": "",
+            "default_bucket": ""
+        }
+    },
+
+/*
+ * --------------------------------------------------------------------------
+ * Configurations for Amazon S3 Upload DASH Chunk
+ * --------------------------------------------------------------------------
+ * plugin_switch = Enable/Disable a Plugin here  
+ * aws_access_key = The amazon aws s3 access key
+ * aws_secret_key = The amazon aws s3 secret key
+ * default_bucket = The bucket in amazon aws s3 where files will be uploaded
+ * 
+ */        
+    "AmazonDASHUpload": {
         "plugin_switch": "disabled",
         "parameters": {
             "aws_access_key": "",

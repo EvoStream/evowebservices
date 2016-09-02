@@ -51,6 +51,9 @@ AmazonHDSUpload.prototype.init = function(settings) {
             // any other options are passed to new AWS.S3() 
             // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Config.html#constructor-property 
         },
+        httpOptions: {
+            timeout: 240000
+        },
     });
 
 };
@@ -68,6 +71,9 @@ AmazonHDSUpload.prototype.processEvent = function(event) {
     //1. Get file from the event
     var file = event.payload.file;
 
+    //Apply the logs
+    winston.log("silly", "AmazonHDSUpload file " + file);
+
     //2. Setup the file directory the the directory where the file would be uploaded
     var uploadDirectory = this.getUploadDirectory(event.type, file);
 
@@ -79,7 +85,7 @@ AmazonHDSUpload.prototype.processEvent = function(event) {
         localFile: file,
 
         s3Params: {
-            Bucket: "ems-files",
+            Bucket: this.settings.default_bucket,
             Key: uploadDirectory['main'],
             ACL: "public-read"
                 // other options supported by putObject, except Body and ContentLength. 
@@ -98,26 +104,21 @@ AmazonHDSUpload.prototype.processEvent = function(event) {
         winston.log("verbose", "AmazonHDSUpload done uploading file " + file);
     });
 
-    //5. Upload the bootstrap file
-    var boostrap = path.dirname(file) + path.sep + this.settings.bootstrap;
+    if (event.type == 'hdsMasterPlaylistUpdated') {
 
-    //Apply the logs
-    winston.log("verbose", "AmazonHDSUpload boostrap " + boostrap);
-
-    if (fs.statSync(boostrap).isFile()) {
-        //5.1 Set the S3 bucket parameters
         var params = {
-            localFile: boostrap,
+            localFile: uploadDirectory['mplaylist_v1File'],
+
             s3Params: {
-                Bucket: "ems-files",
-                Key: uploadDirectory['bootstrap_directory'],
+                Bucket: this.settings.default_bucket,
+                Key: uploadDirectory['mplaylist_v1'],
                 ACL: "public-read"
-                // other options supported by putObject, except Body and ContentLength. 
-                // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property 
+                    // other options supported by putObject, except Body and ContentLength. 
+                    // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property 
             },
         };
 
-        //5.2 Execute the file upload using s3
+        //4. Execute the file upload using s3
         var uploader = this.client.uploadFile(params);
         uploader.on('error', function(err) {
             console.error("AmazonHDSUpload unable to upload:", err.stack);
@@ -125,9 +126,45 @@ AmazonHDSUpload.prototype.processEvent = function(event) {
             return false;
         });
         uploader.on('end', function() {
-            winston.log("verbose", "AmazonHDSUpload done uploading file " + boostrap);
+            winston.log("verbose", "AmazonHDSUpload done uploading file " + uploadDirectory['mplaylist_v1File']);
         });
     }
+
+    if (event.type == 'hdsChunkClosed') {
+
+        //5. Upload the bootstrap file
+        var boostrap = path.dirname(file) + path.sep + this.settings.bootstrap;
+
+        //Apply the logs
+        winston.log("verbose", "AmazonHDSUpload boostrap " + boostrap);
+
+        if (fs.statSync(boostrap).isFile()) {
+            //5.1 Set the S3 bucket parameters
+            var params = {
+                localFile: boostrap,
+                s3Params: {
+                    Bucket: this.settings.default_bucket,
+                    Key: uploadDirectory['bootstrap_directory'],
+                    ACL: "public-read"
+                        // other options supported by putObject, except Body and ContentLength. 
+                        // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property 
+                },
+            };
+
+            //5.2 Execute the file upload using s3
+            var uploader = this.client.uploadFile(params);
+            uploader.on('error', function(err) {
+                console.error("AmazonHDSUpload unable to upload:", err.stack);
+                winston.log("error", "AmazonHDSUpload unable to upload:", err.stack);
+                return false;
+            });
+            uploader.on('end', function() {
+                winston.log("verbose", "AmazonHDSUpload done uploading file " + boostrap);
+            });
+        }
+    }
+
+
 
     return true;
 
@@ -154,22 +191,44 @@ AmazonHDSUpload.prototype.getUploadDirectory = function(eventType, file) {
         uploadDirectory['groupName'] = fileDirectory.pop();
         uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['mplaylist'];
 
+        winston.log("info", "if hdsMasterPlaylistUpdated " + JSON.stringify(uploadDirectory));
+
+
+        //2.a upload manifest_v1.f4m 
+        var mplaylist = uploadDirectory['mplaylist'].split(".");
+        var manifestExt = mplaylist.pop();
+        var manifestName = mplaylist.pop();
+        uploadDirectory['mplaylist_v1'] = uploadDirectory['groupName'] + '/' + manifestName + '_v1.' + manifestExt;
+
+        dirName = path.dirname(file);
+
+        uploadDirectory['mplaylist_v1File'] = dirName + '/' + manifestName + '_v1.' + manifestExt;
+
+
+    } else if (eventType == 'hdsChildPlaylistUpdated') {
+        uploadDirectory['cplaylist'] = fileDirectory.pop();
+        uploadDirectory['localStreamName'] = fileDirectory.pop();
+        uploadDirectory['groupName'] = fileDirectory.pop();
+        uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + '/' + uploadDirectory['cplaylist'];
+
+
     } else {
         uploadDirectory['chunk'] = fileDirectory.pop();
         uploadDirectory['localStreamName'] = fileDirectory.pop();
         uploadDirectory['groupName'] = fileDirectory.pop();
         uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + '/' + uploadDirectory['chunk'];
-    }
 
-    //3. Get the bootstrap
-    var boostrap = path.dirname(file) + path.sep + this.settings.bootstrap;
 
-    //check if a bootstrap file exists
-    if (fs.statSync(boostrap).isFile()) {
-            
-        //3.1 Setup the bootstrap file directory the the directory where the bootstrap would be uploaded
-        uploadDirectory['bootstrap_file'] = path.dirname(file) + '/' + this.settings.bootstrap;
-        uploadDirectory['bootstrap_directory'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + '/' + this.settings.bootstrap;
+        //3. Get the bootstrap
+        var boostrap = path.dirname(file) + path.sep + this.settings.bootstrap;
+
+        //check if a bootstrap file exists
+        if (fs.statSync(boostrap).isFile()) {
+
+            //3.1 Setup the bootstrap file directory the the directory where the bootstrap would be uploaded
+            uploadDirectory['bootstrap_file'] = path.dirname(file) + '/' + this.settings.bootstrap;
+            uploadDirectory['bootstrap_directory'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + '/' + this.settings.bootstrap;
+        }
     }
 
     return uploadDirectory;
