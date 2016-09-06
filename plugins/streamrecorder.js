@@ -60,9 +60,24 @@ StreamRecorder.prototype.processEvent = function(event) {
         localStreamName = event.payload.name;
 
         //2. Execute Record Stream
-        //Check if file location is a valid directory
-        if (fs.lstatSync(this.settings.file_location).isDirectory() == false) {
+        if ((this.settings.file_location === null) || (this.settings.file_location === "")) {
             winston.log('error', "Evowebservices Error: The file location for recorded files is invalid");
+        }
+
+        try {
+            // Query the entry
+            var statsPath = fs.lstatSync(this.settings.file_location);
+
+            // Is it a directory?
+            //Check if file location is a valid directory
+            if (fs.lstatSync(statsPath).isDirectory()) {
+                winston.log('info', "Evowebservices Error: The file location for recorded files is valid");
+            }
+        }
+        catch (e) {
+            winston.log('error', "Evowebservices Error: The file location for recorded files is invalid");
+
+            return false;
         }
 
         var recordFileDirectory = this.settings.file_location + path.sep + localStreamName;

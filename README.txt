@@ -230,7 +230,7 @@ eventLogger=
 
 ## Running the evowebservices 
 
-1.  Run the EMS before starting evowebservices. Make sure the evowebservices is configured on the event notification system in the config.lua
+1.  Run the EMS with the evowebservices configured on the event notification system in the config.lua
 
 2.  Open your node command prompt and go to your evowebservices directory.Start the evowebservices and execute command:
 Send the following command in the terminal:
