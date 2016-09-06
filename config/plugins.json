@@ -103,7 +103,7 @@
  * 
  */        
     "AmazonHLSUpload": {
-        "plugin_switch": "enabled",
+        "plugin_switch": "disabled",
         "parameters": {
             "aws_access_key": "",
             "aws_secret_key": "",
