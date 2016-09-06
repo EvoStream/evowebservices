@@ -120,6 +120,14 @@ AmazonDASHUpload.prototype.getUploadDirectory = function(eventType, file) {
     var fileDirectory = file.split(path.sep);
     var uploadDirectory = new Object();
 
+
+    //Remove preceding slash to avoid folder name concatenation
+    for (var i = 0; i < fileDirectory.length; i++) {
+        while(fileDirectory[i].charAt(0) === '/')
+            fileDirectory[i] = fileDirectory[i].substr(1);
+    }
+
+
     //2. Set the uploading directory where the files would be uploaded
     if (eventType == 'dashPlaylistUpdated') {
         uploadDirectory['mplaylist'] = fileDirectory.pop();
@@ -130,7 +138,7 @@ AmazonDASHUpload.prototype.getUploadDirectory = function(eventType, file) {
         uploadDirectory['chunk'] = fileDirectory.pop();
         uploadDirectory['localStreamName'] = fileDirectory.pop();
         uploadDirectory['groupName'] = fileDirectory.pop();
-        uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName'] + uploadDirectory['chunk'];
+        uploadDirectory['main'] = uploadDirectory['groupName'] + '/' + uploadDirectory['localStreamName']  + '/' +  uploadDirectory['chunk'];
     }
 
     return uploadDirectory;
