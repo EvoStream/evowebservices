@@ -14,37 +14,6 @@ console.log("STARTED: evowebservices:server Listening on port 4000 ");
 
 var winston = require('winston');
 
-var jsonComment = require('comment-json');
-var fs = require('fs');
-var configLog = jsonComment.parse(fs.readFileSync("./config/logging.json"), null, true);
-
-winston.addColors({
-  silly: 'blue',
-  debug: 'gray',
-  verbose: 'magenta',
-  info: 'green',
-  warn: 'yellow',
-  error: 'red'
-});
-
-winston.remove(winston.transports.Console);
-
-// set winston log
-winston.add(winston.transports.File, {
-  level: configLog.options.level,
-  filename: "./logs/evowebservices." + process.pid + "." + new Date().getTime() + "-" + ".log",
-  handleExceptions: configLog.options.handleExceptions,
-  json: configLog.options.json,
-  maxsize: configLog.options.maxsize
-});
-
-winston.add(winston.transports.Console, {
-  level: configLog.options.level,
-  handleExceptions: configLog.options.handleExceptions,
-  colorize: true
-});
-
-
 winston.log("info", "STARTED: evowebservices:server Listening on port 4000 ");
 
 //load the service that initializes the plugins 
@@ -92,7 +61,7 @@ router.post('/', function(req, res, next) {
       processEventStatus = pluginStack[plugin].processEvent(event);
 
       if (processEventStatus == false) {
-        winston.log("error", "Plugin: " + plugin + "failed ");
+        winston.log("error", "Plugin: " + plugin + " failed ");
       }
     }
   }

@@ -74,6 +74,12 @@ AmazonHDSUpload.prototype.processEvent = function(event) {
     //Apply the logs
     winston.log("silly", "AmazonHDSUpload file " + file);
 
+    //boostrap configuration should be set
+    if ((this.settings.bootstrap === null) || (this.settings.bootstrap === "")) {
+        winston.log('error', "Evowebservices Error: AmazonHDSUpload - bootstrap empty string. bootstrap should be set on the plugins.json ");
+        return false;
+    }
+
     //2. Setup the file directory the the directory where the file would be uploaded
     var uploadDirectory = this.getUploadDirectory(event.type, file);
 
@@ -164,8 +170,6 @@ AmazonHDSUpload.prototype.processEvent = function(event) {
         }
     }
 
-
-
     return true;
 
 };
@@ -220,6 +224,7 @@ AmazonHDSUpload.prototype.getUploadDirectory = function(eventType, file) {
 
 
         //3. Get the bootstrap
+
         var boostrap = path.dirname(file) + path.sep + this.settings.bootstrap;
 
         //check if a bootstrap file exists

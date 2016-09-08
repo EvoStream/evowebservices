@@ -62,6 +62,7 @@ StreamRecorder.prototype.processEvent = function(event) {
         //2. Execute Record Stream
         if ((this.settings.file_location === null) || (this.settings.file_location === "")) {
             winston.log('error', "Evowebservices Error: The file location for recorded files is invalid");
+            return false;
         }
 
         try {
