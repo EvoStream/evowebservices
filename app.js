@@ -24,7 +24,11 @@ var winston = require('winston');
 
 var jsonComment = require('comment-json');
 var fs = require('fs');
-var configLog = jsonComment.parse(fs.readFileSync("./config/logging.json"), null, true);
+
+var path = require('path');
+var fileLogging = path.join(__dirname, '/config/logging.json');
+
+var configLog = jsonComment.parse(fs.readFileSync(fileLogging), null, true);
 
 winston.addColors({
     silly: 'blue',
@@ -51,7 +55,6 @@ winston.add(winston.transports.Console, {
     handleExceptions: configLog.options.handleExceptions,
     colorize: true
 });
-
 
 process.on('uncaughtException', function(err) {
     console.log( " UNCAUGHT EXCEPTION " );

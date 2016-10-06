@@ -16,8 +16,12 @@ var winston = require('winston');
 
 winston.log("info", "STARTED: evowebservices:server Listening on port 4000 ");
 
-//load the service that initializes the plugins 
-var pluginService = require('../services/plugin-service');
+var path = require('path');
+var filePluginService = path.join(__dirname, '../services/plugin-service');
+
+//load the service that initializes the plugins
+// var pluginService = require('../services/plugin-service');
+var pluginService = require(filePluginService);
 //load Enabled Plugins
 var pluginStack = pluginService.getPluginsStack();
 
