@@ -54,10 +54,11 @@ module.exports = function(serverUrl) {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Encoding': 'gzip, deflate'
         },
+        timeout: 5000,
         pool: {
-            maxSockets: Infinity
+            maxSockets: 3
         },
-        maxConcurrent: 100
+        maxConcurrent: 3
     };
 
     var self = this;
@@ -67,7 +68,10 @@ module.exports = function(serverUrl) {
         //Apply Logs
         winston.log("verbose", "EMS API this.buildqs ");
 
-        var qs = "?params=";
+        // var qs = "?params=";
+
+        //For using API Proxy URL
+        var qs = "%3Fparams%3D";
         var params = "";
 
         for (var key in parameters) {

@@ -13,7 +13,11 @@ var fs = require('fs');
 
 //require configuration of plugins
 //parse the configuration and remove the comments
-var config = jsonComment.parse(fs.readFileSync("./config/plugins.json"), null, true);
+
+var path = require('path');
+var filePluginsConfig = path.join(__dirname, '../config/plugins.json'); 
+
+var config = jsonComment.parse(fs.readFileSync(filePluginsConfig), null, true);
 var winston = require('winston');
 
 exports.getPluginsStack = function() {
