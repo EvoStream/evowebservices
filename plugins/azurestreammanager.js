@@ -133,89 +133,94 @@ AzureStreamManager.prototype.processEvent = function (event) {
 
             winston.log("info", 'settings.AzureStreamManager.parameters.edges ' + JSON.stringify(settings.AzureStreamManager.parameters.edges));
 
-            var edges = settings.AzureStreamManager.parameters.edges;
+            if(settings.AzureStreamManager.parameters.edges.length > 0){
 
-            syncFor(0, edges.length, "start", function (i, status, call) {
+                var edges = settings.AzureStreamManager.parameters.edges;
 
-                if (status === "done") {
-                    winston.log("info", "edges iteration is done");
-                    winston.log("info", "removeIpAddresses "+JSON.stringify(removeIpAddresses));
+                syncFor(0, edges.length, "start", function (i, status, call) {
 
-                } else {
-                    var edgeObject = null;
-                    edgeObject = edges[i];
+                    if (status === "done") {
+                        winston.log("info", "edges iteration is done");
+                        winston.log("info", "removeIpAddresses "+JSON.stringify(removeIpAddresses));
 
-                    // winston.log("info", "looping edgeObject  " + JSON.stringify(edgeObject));
+                    } else {
+                        var edgeObject = null;
+                        edgeObject = edges[i];
+
+                        // winston.log("info", "looping edgeObject  " + JSON.stringify(edgeObject));
 
 
-                    tcpp.probe(edgeObject.localIp, edgeObject.port, function (err, available) {
-                        winston.log("info", "syncFor tcpp.probe edgeObject  " + JSON.stringify(edgeObject));
-                        winston.log("info", "edgeObject ip available " + JSON.stringify(available));
-                        winston.log("info", "edgeObject ip err " + JSON.stringify(err));
+                        tcpp.probe(edgeObject.localIp, edgeObject.port, function (err, available) {
+                            winston.log("info", "syncFor tcpp.probe edgeObject  " + JSON.stringify(edgeObject));
+                            winston.log("info", "edgeObject ip available " + JSON.stringify(available));
+                            winston.log("info", "edgeObject ip err " + JSON.stringify(err));
 
-                         if (available) {
+                            if (available) {
 
-                            winston.log("info", 'execute pullstream edgeObject.localIp ' + edgeObject.localIp);
-                            // winston.log("info", 'edgeObject.localIp ' + JSON.stringify(edgeObject.localIp));
+                                winston.log("info", 'execute pullstream edgeObject.localIp ' + edgeObject.localIp);
+                                // winston.log("info", 'edgeObject.localIp ' + JSON.stringify(edgeObject.localIp));
 
-                            //execute pullstream
-                            //1. Get the localStreamName and List of Ip Address
-                            var localStreamName = event.payload.name;
-                            var remoteAddress = event.remoteIp;
+                                //execute pullstream
+                                //1. Get the localStreamName and List of Ip Address
+                                var localStreamName = event.payload.name;
+                                var remoteAddress = event.remoteIp;
 
-                            //Get the localStreamName from previous pull
-                            var _localStreamName = '';
-                            if (event.payload.pullSettings != null) {
-                                _localStreamName = event.payload.pullSettings._localStreamName;
-                            }
+                                //Get the localStreamName from previous pull
+                                var _localStreamName = '';
+                                if (event.payload.pullSettings != null) {
+                                    _localStreamName = event.payload.pullSettings._localStreamName;
+                                }
 
-                            //Apply the logs
-                            winston.log("verbose", "AzureStreamManager localStreamName " + localStreamName);
-                            winston.log("verbose", "AzureStreamManager remoteAddress " + remoteAddress);
-                            winston.log("verbose", "AzureStreamManager _localStreamName " + _localStreamName);
+                                //Apply the logs
+                                winston.log("verbose", "AzureStreamManager localStreamName " + localStreamName);
+                                winston.log("verbose", "AzureStreamManager remoteAddress " + remoteAddress);
+                                winston.log("verbose", "AzureStreamManager _localStreamName " + _localStreamName);
 
-                            //2. Check if stream was a previously processed by using property of the pull settings
-                            if (_localStreamName == '' || _localStreamName != localStreamName) {
+                                //2. Check if stream was a previously processed by using property of the pull settings
+                                if (_localStreamName == '' || _localStreamName != localStreamName) {
 
-                                if (edgeObject.localIp !== remoteAddress) {
+                                    if (edgeObject.localIp !== remoteAddress) {
 
-                                    winston.log("verbose", "AzureStreamManager edgeObject.apiproxyUrl " + edgeObject.apiproxyUrl);
+                                        winston.log("verbose", "AzureStreamManager edgeObject.apiproxyUrl " + edgeObject.apiproxyUrl);
 
-                                    //execute ems version
-                                    var ems = require("../core_modules/ems-api-core")(edgeObject.apiproxyUrl);
+                                        //execute ems version
+                                        var ems = require("../core_modules/ems-api-core")(edgeObject.apiproxyUrl);
 
-                                    var targetUri = 'rtmp://' + remoteAddress + '/live/' + localStreamName;
+                                        var targetUri = 'rtmp://' + remoteAddress + '/live/' + localStreamName;
 
-                                    //Apply the logs
-                                    winston.log("verbose", "AzureStreamManager targetUri " + targetUri);
+                                        //Apply the logs
+                                        winston.log("verbose", "AzureStreamManager targetUri " + targetUri);
 
-                                    //Execute pullstream command
-                                    var parameters = {
-                                        uri: targetUri,
-                                        localStreamName: localStreamName,
-                                        keepAlive: 0
-                                    };
+                                        //Execute pullstream command
+                                        var parameters = {
+                                            uri: targetUri,
+                                            localStreamName: localStreamName,
+                                            keepAlive: 0
+                                        };
 
-                                    //execute pullstream
-                                    ems.pullStream(parameters, function (result) {
-                                        winston.log("info", "AzureStreamManager pullStream status " + result.status);
+                                        //execute pullstream
+                                        ems.pullStream(parameters, function (result) {
+                                            winston.log("info", "AzureStreamManager pullStream status " + result.status);
 
-                                        if (result.status == "FAIL") {
-                                            winston.log("error", "Error: AzureStreamManager pullStream on edge: " + JSON.stringify(edgeObject));
+                                            if (result.status == "FAIL") {
+                                                winston.log("error", "Error: AzureStreamManager pullStream on edge: " + JSON.stringify(edgeObject));
+
+                                                call('next');
+                                            }
 
                                             call('next');
-                                        }
-
-                                        call('next');
-                                    });
+                                        });
+                                    }
                                 }
                             }
-                        }
 
-                        call('next');
-                    });
-                }
-            });
+                            call('next');
+                        });
+                    }
+                });
+            }
+
+
         });
     }
 
