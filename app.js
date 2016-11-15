@@ -50,7 +50,13 @@ winston.add(winston.transports.File, {
     filename: logFileName,
     handleExceptions: configLog.options.handleExceptions,
     json: configLog.options.json,
-    maxsize: configLog.options.maxsize
+    maxsize: configLog.options.maxsize,
+    timestamp: function () {
+
+        var timestamp = new Date().getTime() + ":" + process.pid;
+
+        return timestamp;
+    }
 });
 
 winston.add(winston.transports.Console, {
@@ -59,11 +65,12 @@ winston.add(winston.transports.Console, {
     colorize: true
 });
 
-process.on('uncaughtException', function(err) {
-    console.log( " UNCAUGHT EXCEPTION " );
-    console.log( "[Inside 'uncaughtException' event] " + err.stack || err.message );
-    winston.log("error"," UNCAUGHT EXCEPTION " );
-    winston.log("error","[Inside 'uncaughtException' event] " + err.stack || err.message );
+
+process.on('uncaughtException', function (err) {
+    console.log("[evowebservices] UNCAUGHT EXCEPTION ");
+    console.log("[evowebservices] [Inside 'uncaughtException' event] " + err.stack || err.message);
+    winston.log("error", "[evowebservices] UNCAUGHT EXCEPTION ");
+    winston.log("error", "[evowebservices] [Inside 'uncaughtException' event] " + err.stack || err.message);
 });
 
 //set to a different port

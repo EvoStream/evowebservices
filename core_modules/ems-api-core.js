@@ -45,7 +45,6 @@ module.exports = function(serverUrl) {
         this.serverUrl = defaultServerUrl;
     }
 
-
     //default options
     this.options = {
         url: this.serverUrl,
@@ -66,7 +65,7 @@ module.exports = function(serverUrl) {
     this.buildqs = function(parameters) {
 
         //Apply Logs
-        winston.log("verbose", "EMS API this.buildqs ");
+        winston.log("verbose", "[ems-api-core] function: build the query string ");
 
         // var qs = "?params=";
 
@@ -78,7 +77,7 @@ module.exports = function(serverUrl) {
             params += key + "=" + parameters[key] + " ";
         }
 
-        winston.log("verbose", "EMS API parameters: " + params);
+        winston.log("verbose", "[ems-api-core] parameters: "+ params);
 
         var buffer = new Buffer(params);
         var params64 = buffer.toString('base64');
@@ -92,7 +91,7 @@ module.exports = function(serverUrl) {
     this.sendCommand = function(command, parameters, callbackResponse) {
 
         //Apply Logs
-        winston.log("verbose", "EMS API this.sendCommand ");
+        winston.log("verbose", "[ems-api-core] function: send the command ");
 
         var queryString = self.buildqs(parameters);
 
@@ -102,23 +101,23 @@ module.exports = function(serverUrl) {
             self.options["url"] = self.serverUrl + "/" + command + queryString;
         }
 
-        winston.log("verbose", "EMS API this.sendCommand command " + command);
-        winston.log("verbose", "EMS API this.sendCommand parameters " + JSON.stringify(parameters));
-        winston.log("verbose", "EMS API this.sendCommand url " + self.options["url"]);
+        winston.log("verbose", "[ems-api-core] command " + command);
+        winston.log("verbose", "[ems-api-core] parameters " + JSON.stringify(parameters));
+        winston.log("verbose", "[ems-api-core] url " + self.options["url"]);
 
         request.get(self.options, function(err, response) {
 
             if (err) {
                 // console.log("err " + JSON.stringify(err));
                 console.log(err);
-                winston.log("error", "EMS API this.sendCommand error: ", err);
+                winston.log("error", "[ems-api-core] error: ", err);
                 return;
             }
 
             var reponseBody = JSON.parse(response);
 
             //Apply Logs
-            winston.log("verbose", "response "+response);            
+            winston.log("verbose", "[ems-api-core] response "+response);
 
             return callbackResponse(reponseBody);
 
@@ -227,10 +226,8 @@ module.exports = function(serverUrl) {
     for (var key in this.command)(function(key) {
         global[key] = function(parameters, callbackResponse) {
 
-            //Apply Logs
-            winston.log("info", "EMS API function command ");
-
             self.sendCommand(key, parameters, callbackResponse);
+            
         };
     })(key);
 

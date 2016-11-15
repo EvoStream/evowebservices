@@ -1,7 +1,7 @@
 BaseSMPlugin = function () { };
 
 	BaseSMPlugin.prototype.init = function(settings) {
-		console.log("BaseSMPlugin.prototype.init NOT IMPLEMENTED on a Plugin. Please check. ");
+		console.log("[evowebservices] BaseSMPlugin.prototype.init NOT IMPLEMENTED on a Plugin. Please check. ");
 		process.exit(1);
 	};
 	/* !
@@ -14,7 +14,7 @@ BaseSMPlugin = function () { };
 	 */
 
 	BaseSMPlugin.prototype.processEvent = function(event) {
-		console.log("BaseSMPlugin.prototype.processEvent NOT IMPLEMENTED on a Plugin. Please check. ");
+		console.log("[evowebservices] BaseSMPlugin.prototype.processEvent NOT IMPLEMENTED on a Plugin. Please check. ");
 		process.exit(1);
 	};
 	/* !
@@ -29,7 +29,7 @@ BaseSMPlugin = function () { };
 	 */
 
 	BaseSMPlugin.prototype.getUrlApiProxy = function(edgeObject) {
-		console.log("BaseSMPlugin.prototype.getUrlApiProxy NOT IMPLEMENTED on a Plugin. Please check. ");
+		console.log("[evowebservices] BaseSMPlugin.prototype.getUrlApiProxy NOT IMPLEMENTED on a Plugin. Please check. ");
 		process.exit(1);
 	};
 	/*
@@ -42,7 +42,7 @@ BaseSMPlugin = function () { };
 	 */
 
 	BaseSMPlugin.prototype.supportsEvent = function(eventType) {
-		console.log("BaseSMPlugin.prototype.supportsEvent NOT IMPLEMENTED on a Plugin. Please check. ");
+		console.log("[evowebservices] BaseSMPlugin.prototype.supportsEvent NOT IMPLEMENTED on a Plugin. Please check. ");
 		process.exit(1);
 	};
 	/*
