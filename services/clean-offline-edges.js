@@ -16,8 +16,7 @@ var winston = require('winston');
 var jsonfile = require('jsonfile');
 
 //require configuration of plugins
-var file = './config/plugins.json';
-// var file = path.join(__dirname, './config/plugins.json');
+var file = path.join(__dirname, '../config/plugins.json');
 
 var tcpp = require('tcp-ping');
 

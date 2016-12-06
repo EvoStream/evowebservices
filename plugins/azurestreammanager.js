@@ -16,8 +16,7 @@ var BasePlugin = require('../base_plugins/basesmplugin');
 var winston = require('winston');
 
 var jsonfile = require('jsonfile');
-// var file = './config/plugins.json';
-var file = path.join(__dirname, './config/plugins.json');
+var file = path.join(__dirname, '../config/plugins.json');
 
 var tcpp = require('tcp-ping');
 
