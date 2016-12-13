@@ -2,7 +2,7 @@
   "AzureStreamManager": {
     "plugin_switch": "enabled",
     "parameters": {
-      "origin": [],
+      "origins": [],
       "edges": []
     }
   }
