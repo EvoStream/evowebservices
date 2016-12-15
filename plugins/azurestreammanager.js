@@ -111,6 +111,8 @@ AzureStreamManager.prototype.processEvent = function (event) {
                         ems.listStreams(parameters, function (result) {
                             // console.log("version result" + JSON.stringify(result));
 
+                            winston.log("verbose", "[evowebservices] AzureStreamManager listStreams result: " + JSON.stringify(result));
+
                             if (result.status == "FAIL" || (result.data == null ) ) {
                                 winston.log("error", "[evowebservices] Error: AzureStreamManager listStreams on origin: " + JSON.stringify(origins[i]));
                             }else {
@@ -119,7 +121,7 @@ AzureStreamManager.prototype.processEvent = function (event) {
 
                                 for (var y in listStreamData) {
 
-                                    winston.log("error", "[evowebservices] Error: AzureStreamManager listStreamData: " + JSON.stringify(listStreamData[y]));
+                                    winston.log("verbose", "[evowebservices] AzureStreamManager listStreamData: " + JSON.stringify(listStreamData[y]));
 
                                     //check for pullsettings
                                     if(listStreamData[y].hasOwnProperty('pullSettings')){
@@ -162,6 +164,7 @@ AzureStreamManager.prototype.processEvent = function (event) {
                 originObject.localIp = event.localIp;
                 originObject.apiproxy = event.payload.apiproxy;
                 originObject.username = serverObjectUserName;
+                originObject.password = event.payload.password;
                 originObject.port = serverObjectPort;
 
                 //build the api proxy url
