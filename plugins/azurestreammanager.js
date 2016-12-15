@@ -89,6 +89,72 @@ AzureStreamManager.prototype.processEvent = function (event) {
                 settings.AzureStreamManager.parameters.edges.push(edgeObject);
                 winston.log("info", "[evowebservices] list of edges " + JSON.stringify(settings.AzureStreamManager.parameters.edges));
 
+                //check if origin exists
+                if(settings.AzureStreamManager.parameters.origins.length > 0){
+
+                    //loop through origins
+                    var origins = settings.AzureStreamManager.parameters.origins;
+
+                    winston.log("info", "[evowebservices] list of origins: " + JSON.stringify(origins));
+
+                    for (var i in origins) {
+
+                        winston.log("info", "[evowebservices] origin object: " + JSON.stringify(origins[i]));
+
+                        //get the streams from origin
+                        var parameters = null;
+
+                        //create the ems object for origin
+                        var ems = require("../core_modules/ems-api-core")(origins[i].apiproxyUrl);
+
+                        //Execute command for version to check connection to ems
+                        ems.listStreams(parameters, function (result) {
+                            // console.log("version result" + JSON.stringify(result));
+
+                            if (result.status == "FAIL" || (result.data == null ) ) {
+                                winston.log("error", "[evowebservices] Error: AzureStreamManager listStreams on origin: " + JSON.stringify(origins[i]));
+                            }else {
+
+                                var listStreamData = result.data;
+
+                                for (var y in listStreamData) {
+
+                                    winston.log("error", "[evowebservices] Error: AzureStreamManager listStreamData: " + JSON.stringify(listStreamData[y]));
+
+                                    //check for pullsettings
+                                    if(listStreamData[y].hasOwnProperty('pullSettings')){
+
+                                        //create the ems instance for edge
+                                        var ems = require("../core_modules/ems-api-core")(edgeObject.apiproxyUrl);
+                                        var localStreamName = listStreamData[y].pullSettings.localStreamName;
+
+                                        var targetUri = 'rtmp://' + origins[i].localIp + '/live/' + localStreamName;
+
+                                        //Apply the logs
+                                        winston.log("verbose", "[evowebservices] AzureStreamManager targetUri " + targetUri);
+
+                                        //Execute pullstream command
+                                        var parameters = {
+                                            uri: targetUri,
+                                            localStreamName: localStreamName,
+                                            keepAlive: 0
+                                        };
+
+                                        //execute pullstream
+                                        ems.pullStream(parameters, function (result) {
+                                            winston.log("info", "[evowebservices] AzureStreamManager pullStream status " + result.status);
+
+                                            if (result.status == "FAIL" || (result.data == null ) ) {
+                                                winston.log("error", "[evowebservices] Error: AzureStreamManager pullStream on edge: " + JSON.stringify(edgeObject));
+                                            }
+
+                                        });
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
             } else if (serverType == 'origin') {
 
                 var originObject = {};
@@ -96,7 +162,6 @@ AzureStreamManager.prototype.processEvent = function (event) {
                 originObject.localIp = event.localIp;
                 originObject.apiproxy = event.payload.apiproxy;
                 originObject.username = serverObjectUserName;
-                ;
                 originObject.port = serverObjectPort;
 
                 //build the api proxy url
@@ -109,7 +174,6 @@ AzureStreamManager.prototype.processEvent = function (event) {
 
             jsonfile.writeFileSync(file, settings, {spaces: 4});
         });
-
     }
 
     if (event.type == 'inStreamCreated') {
@@ -175,7 +239,7 @@ AzureStreamManager.prototype.processEvent = function (event) {
 
                                         winston.log("verbose", "[evowebservices] AzureStreamManager apiproxyUrl " + edgeObject.apiproxyUrl);
 
-                                        //execute ems version
+                                        //create the ems instance for edge
                                         var ems = require("../core_modules/ems-api-core")(edgeObject.apiproxyUrl);
 
                                         var targetUri = 'rtmp://' + remoteAddress + '/live/' + localStreamName;
@@ -211,8 +275,6 @@ AzureStreamManager.prototype.processEvent = function (event) {
                     }
                 });
             }
-
-
         });
     }
 
