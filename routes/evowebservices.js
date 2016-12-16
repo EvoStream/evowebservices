@@ -43,8 +43,7 @@ router.get('/', function (req, res, next) {
 router.post('/', function (req, res, next) {
     winston.log("info", "[evowebservices] function: Incoming raw post data from EMS");
 
-    //clean the offline edges first
-    vmService.cleanOfflineEdges();
+
 
     //Get the RAW POST DATA
     var event = req.body;
@@ -67,6 +66,12 @@ router.post('/', function (req, res, next) {
 
     var remoteIp = event.payload.ip;
     event.remoteIp = remoteIp;
+
+    //Do not cleanup the edge vm on startup deployment
+    if(eventType != 'vmCreated'){
+        //clean the offline edges first
+        vmService.cleanOfflineEdges();
+    }
 
     for (var plugin in pluginStack) {
 

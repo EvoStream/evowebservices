@@ -10,9 +10,8 @@
 var util = require('util');
 var path = require('path');
 
-
 //Include the Base Plugin for the application
-var BasePlugin = require('../base_plugins/basesmplugin');
+var BaseSMPlugin = require('../base_plugins/basesmplugin');
 var winston = require('winston');
 
 var jsonfile = require('jsonfile');
