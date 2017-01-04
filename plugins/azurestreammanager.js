@@ -159,12 +159,16 @@ AzureStreamManager.prototype.processEvent = function (event) {
             } else if (serverType == 'origin') {
 
                 var originObject = {};
+				
+				winston.log("info", "[evowebservices] event data for origin  " + JSON.stringify(event));
 
                 originObject.localIp = event.localIp;
                 originObject.apiproxy = event.payload.apiproxy;
                 originObject.username = serverObjectUserName;
                 originObject.password = event.payload.password;
                 originObject.port = serverObjectPort;
+				
+				winston.log("info", "[evowebservices] origin object created " + JSON.stringify(originObject));
 
                 //build the api proxy url
                 originObject.apiproxyUrl = azureStreamManager.getUrlApiProxy(originObject);
