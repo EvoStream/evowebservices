@@ -215,7 +215,8 @@ AzureStreamManager.prototype.processEvent = function (event) {
                         winston.log("info", "[evowebservices] looping on edges ");
 
 
-                        tcpp.probe(edgeObject.localIp, edgeObject.port, function (err, available) {
+                        
+                        tcpp.probe(edgeObject.localIp, 22, function (err, available) {
                             winston.log("info", "[evowebservices] edge information: "+JSON.stringify(edgeObject));
                             winston.log("info", "[evowebservices] edge ip is available " + JSON.stringify(available));
 

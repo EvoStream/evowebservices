@@ -79,7 +79,7 @@ exports.cleanOfflineEdges = function () {
 
                     winston.log("info", "looping edgeObject  " + JSON.stringify(edgeObject));
 
-                    tcpp.probe(edgeObject.localIp, edgeObject.port, function (err, available) {
+                    tcpp.probe(edgeObject.localIp, 22, function (err, available) {
                         winston.log("info", "syncFor tcpp.probe edgeObject  " + JSON.stringify(edgeObject));
                         winston.log("info", "edgeObject ip available " + JSON.stringify(available));
                         winston.log("info", "edgeObject ip err " + JSON.stringify(err));
