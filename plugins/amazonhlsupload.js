@@ -1,10 +1,10 @@
 /***
- * 
+ *
  * EvoStream Web Services
  * EvoStream, Inc.
  * (c) 2016 by EvoStream, Inc. (support@evostream.com)
  * Released under the MIT License
- * 
+ *
  ***/
 
 var util = require('util');
@@ -17,7 +17,8 @@ var path = require('path');
 /*
  * Amazon S3 Upload HLS Chunk Plugin
  */
-var AmazonHLSUpload = function() {};
+var AmazonHLSUpload = function () {
+};
 
 //implement the BaseHLSPlugin
 util.inherits(AmazonHLSUpload, BaseHLSPlugin);
@@ -27,10 +28,8 @@ util.inherits(AmazonHLSUpload, BaseHLSPlugin);
  * @param array settings
  * @return boolean
  */
-AmazonHLSUpload.prototype.init = function(settings) {
-
-    //Apply Logs
-    winston.log("info", "AmazonHLSUpload.prototype.init ");
+AmazonHLSUpload.prototype.init = function (settings) {
+    winston.log("info", "[webservices] amazonhlsupload: init ");
 
     this.settings = settings;
     this.AmazonHLSUploadCtr = 0;
@@ -50,7 +49,7 @@ AmazonHLSUpload.prototype.init = function(settings) {
         },
         httpOptions: {
             timeout: 240000
-        },        
+        },
     });
 
 };
@@ -60,75 +59,116 @@ AmazonHLSUpload.prototype.init = function(settings) {
  * @param array event
  * @return boolean
  */
-AmazonHLSUpload.prototype.processEvent = function(event) {
+AmazonHLSUpload.prototype.processEvent = function (event) {
+    winston.log("info", "[webservices] amazonhlsupload: processEvent ");
 
-    //Apply Logs
-    winston.log("info", "AmazonHLSUpload.prototype.processEvent ");
+    var AmazonHLSUpload = this;
 
-    //1. Get file from the event
-    var file = event.payload.file;
+    var eventDataArray = [];
+    eventDataArray.push(event);
 
-    //Apply the logs
-    winston.log("verbose", "AmazonHLSUpload file to be uploaded: " + file);
+    var async = require("async");
+    async.mapSeries(eventDataArray,
+        function (eventData, callback) {
 
-    //2. Setup the file directory the the directory where the file would be uploaded
-    var uploadDirectory = this.getUploadDirectory(event.type, file);
+            winston.log("info", "[webservices] amazonhlsupload: processEvent eventData " + JSON.stringify(eventData));
 
-    //Apply the logs
-    winston.log("verbose", "AmazonHLSUpload uploadDirectory " + JSON.stringify(uploadDirectory));
+            //setup the file directory the the directory where the file would be uploaded
+            var uploadDirectory = AmazonHLSUpload.getUploadDirectory(eventData.type, eventData.payload.file);
 
-    //3. Set the S3 bucket parameters
-    var params = {
-        localFile: file,
+            //Check if chunk is for deletion
+            if (eventData.type == 'hlsChunkDeleted') {
 
-        s3Params: {
-            Bucket: this.settings.default_bucket,
-            Key: uploadDirectory['main'],
-            ACL: "public-read"
-                // other options supported by putObject, except Body and ContentLength. 
-                // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property 
+                var params = {
+                    Bucket: AmazonHLSUpload.settings.default_bucket,
+                    Delete: {
+                        Objects: [
+                            {
+                                Key: uploadDirectory.main
+                            }
+                        ],
+                    }
+                };
+
+                var deleter = AmazonHLSUpload.client.deleteObjects(params);
+                deleter.on('error', function(err) {
+                    console.error("[webservices] amazonhlsupload: unable to delete - ", err.stack);
+                    winston.log("error", "[webservices] amazonhlsupload: unable to upload - "+ JSON.stringify(err));
+                    winston.log("error", "[webservices] amazonhlsupload: unable to delete data - " +uploadDirectory.main);
+                    callback(false);
+                });
+                deleter.on('end', function() {
+                    winston.log("info", "[webservices] amazonhlsupload: done deleting file - " +uploadDirectory.main);
+                    callback(true);
+                });
+            }else{
+                //3. Set the S3 bucket parameters
+                var params = {
+                    localFile: eventData.payload.file,
+
+                    s3Params: {
+                        Bucket: AmazonHLSUpload.settings.default_bucket,
+                        Key: uploadDirectory['main'],
+                        ACL: "public-read"
+                        // other options supported by putObject, except Body and ContentLength.
+                        // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property
+                    },
+                };
+
+                //4. Execute the file upload using s3
+                var uploader = AmazonHLSUpload.client.uploadFile(params);
+                uploader.on('error', function (err) {
+                    console.error("[webservices] amazonhlsupload: unable to delete - ", err.stack);
+                    winston.log("error", "[webservices] amazonhlsupload: unable to upload - "+ JSON.stringify(err));
+                    winston.log("error", "[webservices] amazonhlsupload: unable to delete data - " +uploadDirectory.main);
+                    callback(false);
+                });
+                uploader.on('end', function () {
+                    winston.log("info", "[webservices] amazonhlsupload: done uploading file - " +uploadDirectory.main);
+
+                    if (eventData.type == 'hlsChunkClosed') {
+                        //4. Upload the Child Playlist after the  HLS Chunk
+                        var params = {
+                            localFile: uploadDirectory['cplaylistDir'],
+
+                            s3Params: {
+                                Bucket: AmazonHLSUpload.settings.default_bucket,
+                                Key: uploadDirectory['cplaylist'],
+                                ACL: "public-read"
+                                // other options supported by putObject, except Body and ContentLength.
+                                // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property
+                            },
+                        };
+
+                        //4. Execute the file upload using s3
+                        var uploader = AmazonHLSUpload.client.uploadFile(params);
+                        uploader.on('error', function (err) {
+                            console.error("[webservices] amazonhlsupload: unable to delete - ", err.stack);
+                            winston.log("error", "[webservices] amazonhlsupload: unable to upload - "+ JSON.stringify(err));
+                            winston.log("error", "[webservices] amazonhlsupload: unable to delete data - " +uploadDirectory.main);
+                            callback(false);
+                        });
+                        uploader.on('end', function () {
+                            winston.log("info", "[webservices] amazonhlsupload: done uploading file - " +uploadDirectory['cplaylist']);
+                            callback(true);
+                        });
+                    }else{
+                        callback(true);
+                    }
+                });
+
+            }
+
         },
-    };
+        // 3rd param is the function to call when everything's done
+        function (status) {
+            winston.log("info", "[webservices] amazonhlsupload: all eventData done, status - " +status);
+            return status;
 
-    //4. Execute the file upload using s3
-    var uploader = this.client.uploadFile(params);
-    uploader.on('error', function(err) {
-        console.error("unable to upload:", err.stack);
-        winston.log('error', "AmazonHLSUpload unable to upload:", err.stack);
-        return false;
-    });
-    uploader.on('end', function() {
-        winston.log('info', "AmazonHLSUpload done uploading file " + file);
-    });
+        }
+    );
 
 
-    if (event.type == 'hlsChunkClosed') {
-        //4. Upload the Child Playlist after the  HLS Chunk
-        var params = {
-            localFile: uploadDirectory['cplaylistDir'],
-
-            s3Params: {
-                Bucket: this.settings.default_bucket,
-                Key: uploadDirectory['cplaylist'],
-                ACL: "public-read"
-                    // other options supported by putObject, except Body and ContentLength. 
-                    // See: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putObject-property 
-            },
-        };
-
-        //4. Execute the file upload using s3
-        var uploader = this.client.uploadFile(params);
-        uploader.on('error', function(err) {
-            console.error("unable to upload:", err.stack);
-            winston.log('error', "AmazonHLSUpload unable to upload:", err.stack);
-            return false;
-        });
-        uploader.on('end', function() {
-            winston.log('info', "AmazonHLSUpload done uploading file " + uploadDirectory['cplaylistDir']);
-        });
-    }
-
-    return true;
 
 };
 
@@ -138,10 +178,8 @@ AmazonHLSUpload.prototype.processEvent = function(event) {
  * @param string file
  * @return array uploadDirectory
  */
-AmazonHLSUpload.prototype.getUploadDirectory = function(eventType, file) {
-
-    //Apply Logs
-    winston.log("info", "AmazonHLSUpload.prototype.getUploadDirectory ");
+AmazonHLSUpload.prototype.getUploadDirectory = function (eventType, file) {
+    winston.log("info", "[webservices] amazonhlsupload: getUploadDirectory ");
 
     //1. Get the folder and file names from the file location
     var fileDirectory = file.split(path.sep);
@@ -162,6 +200,7 @@ AmazonHLSUpload.prototype.getUploadDirectory = function(eventType, file) {
         uploadDirectory['cplaylistDir'] = path.dirname(file) + '/playlist.m3u8';
     }
 
+    winston.log("info", "[webservices] amazonhlsupload: getUploadDirectory data - "+JSON.stringify(uploadDirectory));
     return uploadDirectory;
 };
 
@@ -170,10 +209,9 @@ AmazonHLSUpload.prototype.getUploadDirectory = function(eventType, file) {
  * @param string eventType
  * @return boolean
  */
-AmazonHLSUpload.prototype.supportsEvent = function(eventType) {
-
-    //Apply the logs
-    winston.log("info", "AmazonHLSUpload.prototype.supportsEvent ");
+AmazonHLSUpload.prototype.supportsEvent = function (eventType) {
+    winston.log("info", "[webservices] amazonhlsupload: supportsEvent ");
+    winston.log("verbose", "[webservices] amazonhlsupload: supportsEvent eventType "+eventType);
 
     //Validate that Plugin supports the Event for Master Playlist
     if (eventType == 'hlsMasterPlaylistUpdated') {
@@ -182,6 +220,11 @@ AmazonHLSUpload.prototype.supportsEvent = function(eventType) {
 
     //Validate that Plugin supports the Event for Chunk
     if (eventType == 'hlsChunkClosed') {
+        return true;
+    }
+
+    //Validate that Plugin supports the Event for Chunk
+    if (eventType == 'hlsChunkDeleted') {
         return true;
     }
 

@@ -12,6 +12,8 @@ var util = require('util');
 //Include the Base Plugin for the application
 var BasePlugin = require('../base_plugins/baseplugin');
 var winston = require('winston');
+var path = require('path');
+
 
 /*
  * Stream Auto Router Plugin
@@ -28,9 +30,7 @@ util.inherits(StreamAutoRouter, BasePlugin);
  */
 StreamAutoRouter.prototype.init = function(settings) {
 
-    //Apply Logs
-    winston.log("info", "StreamAutoRouter.prototype.init ");
-
+    winston.log("info", "[webservices] streamautorouter: init ");
     this.settings = settings;
 
 };
@@ -41,61 +41,73 @@ StreamAutoRouter.prototype.init = function(settings) {
  * @return boolean
  */
 StreamAutoRouter.prototype.processEvent = function(event) {
+    winston.log("info", "[webservices] streamautorouter: processEvent ");
 
-    //Apply Logs
-    winston.log("info", "StreamAutoRouter.prototype.processEvent ");
+    var StreamAutoRouter = this;
 
-    this.StreamAutoRouterCtr = this.StreamAutoRouterCtr + 1;
+    var eventDataArray = [];
+    eventDataArray.push(event);
 
-    //1. Get LocalStreamName and ip address of sender and receiver
-    var localStreamName = event.payload.name;
-    var remoteAddress = event.remoteIp;
+    var async = require("async");
+    async.mapSeries(eventDataArray,
+        function (eventData, callback) {
 
-    //2. Check the token on LocalStreamName
-    var tokenExists = localStreamName.indexOf(this.settings.token);
+            winston.log("info", "[webservices] streamautorouter: processEvent eventData " + JSON.stringify(eventData));
 
-    //Apply the logs
-    winston.log("verbose", "StreamAutoRouter localStreamName " + localStreamName);
-    winston.log("verbose", "StreamAutoRouter remoteAddress " + remoteAddress);
-    winston.log("verbose", "StreamAutoRouter tokenExists " + tokenExists);
+            StreamAutoRouter.StreamAutoRouterCtr = StreamAutoRouter.StreamAutoRouterCtr + 1;
 
-    //3. If Token is valid, execute AutoRouter Stream
-    if ((tokenExists > -1) || (this.settings.token == "")) {
+            //1. Get LocalStreamName and ip address of sender and receiver
+            var localStreamName = eventData.payload.name;
+            var remoteAddress = eventData.remoteIp;
 
-        //Exit plugin if ip address of receiver and sender is the same
-        if (this.settings.destination_uri === remoteAddress) {
-            return true;
-        }
+            //2. Check the token on LocalStreamName
+            var tokenExists = localStreamName.indexOf(StreamAutoRouter.settings.token);
 
-        var targetUri = "rtmp://" + this.settings.destination_uri + "/live";
+            //Apply the logs
+            winston.log("verbose", "[webservices] streamautorouter: localStreamName " + localStreamName);
+            winston.log("verbose", "[webservices] streamautorouter: remoteAddress " + remoteAddress);
+            winston.log("verbose", "[webservices] streamautorouter: tokenExists " + tokenExists);
 
-        //Apply the logs
-        winston.log("verbose", "StreamAutoRouter targetUri " + targetUri);
+            //3. If Token is valid, execute AutoRouter Stream
+            if ((tokenExists > -1) || (StreamAutoRouter.settings.token == "")) {
 
-        parameters = {
-            uri: targetUri,
-            localStreamName: localStreamName,
-            keepAlive: 0
-        };
+                //Exit plugin if ip address of receiver and sender is the same
+                if (StreamAutoRouter.settings.destination_uri === remoteAddress) {
+                    callback(true);
+                }
 
-        var ems = require("../core_modules/ems-api-core")(null);
+                var targetUri = "rtmp://" + StreamAutoRouter.settings.destination_uri + "/live";
 
-        //Execute command for pushStream using destination address
-        ems.pushStream(parameters, function(result) {
-            winston.log("info", "StreamAutoRouter pushStream status " + result.status);        
+                //Apply the logs
+                winston.log("verbose", "[webservices] streamautorouter: targetUri " + targetUri);
 
-            if(result.status == "FAIL"){
-                winston.log("error", "StreamAutoRouter pushStream status " + result.status);
+                parameters = {
+                    uri: targetUri,
+                    localStreamName: localStreamName,
+                    keepAlive: 0 
+                };
 
-                return false;
+                var ipApiProxy = require(path.join(__dirname, "../core_modules/ems-api-proxy"));
+                var ems = require(path.join(__dirname, "../core_modules/ems-api-core"))(ipApiProxy.url);
+
+                //Execute command for pushStream using destination address
+                ems.pushStream(parameters, function(result) {
+                    winston.log("info", "[webservices] streamautorouter: pushStream result " + JSON.stringify(result));
+
+                    callback(true);
+
+
+                });
+
             }
-        });
+        },
+        //the function to call when everything's done
+        function (status) {
+            winston.log("info", "[webservices] streamautorouter: all eventData done, status - " +status);
+            return status;
 
-    }
-
-
-    //Return True if process execution is done
-    return true;
+        }
+    );
 
 
 
@@ -107,9 +119,8 @@ StreamAutoRouter.prototype.processEvent = function(event) {
  * @return boolean
  */
 StreamAutoRouter.prototype.supportsEvent = function(eventType) {
-
-    //Apply Logs
-    winston.log("info", "StreamAutoRouter.prototype.supportsEvent ");
+    winston.log("info", "[webservices] streamautorouter: supportsEvent ");
+    winston.log("verbose", "[webservices] streamautorouter: supportsEvent eventType "+eventType);
 
     //Validate that Plugin supports the Event
     if (eventType == 'inStreamCreated') {

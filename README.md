@@ -185,22 +185,61 @@ The evowebservices configurations are found on the `/evowebservices/config` dire
 
 ​	This is the configuration to enable logging of the evowebservices to a file and the console.
 
+- **EMS Config.lua**
 
+​	Enable the evowebservices node on the config.lua - Event Notification System
 
+``` 
+Sample Configuration in the config.lua
 
-
-
+eventLogger=
+			{
+				{
+					type="RPC",
+					-- IMPORTANT!!!
+					-- To set the url below, match the webconfig.lua's ip and port settings
+					--    port=8888,
+					--    bindToIP="", -- used for binding to a particular IP
+					--                    used in cases where a machine has multiple ethernet interfaces
+					-- If using a single ethernet interface, use the localhost ip (not loopback);
+					-- otherwise, use what is defined in bindToIP
+					url="http://localhost:4000/evowebservices/",
+					serializerType="JSON",
+					-- serializerType="XML"
+					-- serializerType="XMLRPC"
+					enabledEvents=
+					{  --These are the events sent by default and tend to be the most commonly used
+						"inStreamCreated",
+						"inStreamClosed",
+						"outStreamCreated",
+						"timerCreated",
+						"timerTriggered",
+						"timerClosed",						
+						"hlsMasterPlaylistUpdated",
+						"hlsChildPlaylistUpdated",
+						"hlsChunkClosed",
+						"hdsMasterPlaylistUpdated",
+						"hdsChildPlaylistUpdated",
+						"hdsChunkClosed",
+						"dashChunkClosed",
+						"dashPlaylistUpdated"													
+					},
+				},
+			}
+``` 
 
 ## Running the evowebservices 
 
-Once you have everything configured, you can start the evowebservices by going to the evowebservices folder where it was installed and execute command:
+1.  Run the EMS before starting evowebservices. Make sure the evowebservices is configured on the event notification system in the config.lua
 
+2.  Open your node command prompt and go to your evowebservices directory.Start the evowebservices and execute command:
 Send the following command in the terminal:
 
 ``` 
 npm start
 ```
 
+3. Check the node console terminal and evowebservice log for errors. The evowebservices log is located on the evowebservices/logs directory
 
 
 ## Stopping the evowebservices 

@@ -1,7 +1,7 @@
 BasePlugin = function () { };
 
 	BasePlugin.prototype.init = function(settings) {
-		console.log("BasePlugin.prototype.init NOT IMPLEMENTED on a Plugin. Please check. ");
+		console.log("[webservices] BasePlugin.prototype.init NOT IMPLEMENTED on a Plugin. Please check. ");
 		process.exit(1);
 	};
 	/* !
@@ -14,7 +14,7 @@ BasePlugin = function () { };
 	 */
 
 	BasePlugin.prototype.processEvent = function(event) {
-		console.log("BasePlugin.prototype.processEvent NOT IMPLEMENTED on a Plugin. Please check. ");
+		console.log("[webservices] BasePlugin.prototype.processEvent NOT IMPLEMENTED on a Plugin. Please check. ");
 		process.exit(1);
 	};
 	/* !
@@ -29,7 +29,7 @@ BasePlugin = function () { };
 	 */
 
 	BasePlugin.prototype.getUploadDirectory = function(eventType, file) {
-		console.log("BasePlugin.prototype.getUploadDirectory NOT IMPLEMENTED on a Plugin. Please check. ");
+		console.log("[webservices] BasePlugin.prototype.getUploadDirectory NOT IMPLEMENTED on a Plugin. Please check. ");
 		process.exit(1);
 	};
 	/*

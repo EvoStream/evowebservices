@@ -1,43 +1,27 @@
-/**
+/***
  *
- * Copyright (c) 2016, EvoStream Inc.  All rights reserved.
+ * EvoStream Web Services
+ * EvoStream, Inc.
+ * (c) 2017 by EvoStream, Inc. (support@evostream.com)
+ * Released under the MIT License
  *
- * This software is provided free of charge to be used solely in conjunction
- * with the EvoStream Media Server.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the source code retain the above
- * copyright notice, this list of conditions and the following disclaimer.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- *
- * @package evostream
- * @subpackage api
- * @version 0.708
- */
+ ***/
 
 /**
  * EMS API
  */
 
-var request = require('request-enhanced');
+// var request = require('request-enhanced');
+var request = require('request-promise');
 var winston = require('winston');
+
+
 
 module.exports = function(serverUrl) {
 
     //set the Server URL
-    var defaultServerUrl = "http://127.0.0.1:7777/";
+    //Change to support IPv4 to IPv6
+    var defaultServerUrl = "http://127.0.0.1:7777";
 
     if (serverUrl != null) {
         this.serverUrl = serverUrl;
@@ -52,20 +36,17 @@ module.exports = function(serverUrl) {
         method: 'GET',
         headers: {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Encoding': 'gzip, deflate'
+            'Accept-Encoding': 'gzip, deflate',
+            'User-Agent': 'Request-Promise for EMS Applications'
         },
-        pool: {
-            maxSockets: Infinity
-        },
-        maxConcurrent: 100
+        json: true
     };
 
     var self = this;
 
     this.buildqs = function(parameters) {
 
-        //Apply Logs
-        winston.log("verbose", "EMS API this.buildqs ");
+        winston.log("info", "[EMS-API] building the query string ");
 
         var qs = "?params=";
         var params = "";
@@ -74,11 +55,13 @@ module.exports = function(serverUrl) {
             params += key + "=" + parameters[key] + " ";
         }
 
-        winston.log("verbose", "EMS API parameters: " + params);
+        winston.log("verbose", "[EMS-API] parameters: " + params);
 
         var buffer = new Buffer(params);
         var params64 = buffer.toString('base64');
         qs += params64;
+
+        winston.log("verbose", "[EMS-API] base64 parameters: " + params);
 
         return qs;
 
@@ -87,8 +70,7 @@ module.exports = function(serverUrl) {
 
     this.sendCommand = function(command, parameters, callbackResponse) {
 
-        //Apply Logs
-        winston.log("verbose", "EMS API this.sendCommand ");
+        winston.log("info", "[EMS-API] building the command");
 
         var queryString = self.buildqs(parameters);
 
@@ -98,27 +80,24 @@ module.exports = function(serverUrl) {
             self.options["url"] = self.serverUrl + "/" + command + queryString;
         }
 
-        winston.log("verbose", "EMS API this.sendCommand command " + command);
-        winston.log("verbose", "EMS API this.sendCommand parameters " + JSON.stringify(parameters));
-        winston.log("verbose", "EMS API this.sendCommand url " + self.options["url"]);
 
-        request.get(self.options, function(err, response) {
-
-            if (err) {
-                // console.log("err " + JSON.stringify(err));
-                console.log(err);
-                winston.log("error", "EMS API this.sendCommand error: ", err);
-                return;
+        if(command != 'version'){
+            if (queryString == "?params=") {
+                winston.log("info", "[EMS-API] command url: [SERVERURL]/" + command);
+            } else {
+                winston.log("info", "[EMS-API] command url: [SERVERURL]/" + command + queryString);
             }
+        }
 
-            var reponseBody = JSON.parse(response);
+        request(self.options)
+            .then(function (response) {
+                // winston.log("verbose", "[EMS-API] response: "+JSON.stringify(response));
 
-            //Apply Logs
-            winston.log("verbose", "response "+response);            
-
-            return callbackResponse(reponseBody);
-
-        });
+                return callbackResponse(response);
+            })
+            .catch(function (error) {
+                winston.log("error", "[EMS-API] response failed: "+JSON.stringify(error));
+            });
     };
 
     this.command = {
@@ -186,7 +165,6 @@ module.exports = function(serverUrl) {
         removeStorage: "removeStorage",
         setAuthentication: "setAuthentication",
         setLogLevel: "setLogLevel",
-        quit: "quit",
         help: "help",
         shutdownServer: "shutdownServer",
 
@@ -216,16 +194,24 @@ module.exports = function(serverUrl) {
         listServices: "listServices",
         createService: "createService",
         enableService: "enableService",
-        shutdownService: "shutdownService"
+        shutdownService: "shutdownService",
+        addMetadataListener: "addMetadataListener",
+        listMetadataListeners: "listMetadataListeners",
+
+        /*********************************************************************************************************************
+         * Additional Info
+         */
+
+        getInboundStreamsCount: "getinboundStreamsCount",
+        getLicenseId: "getLicenseId",
+        getServerInfo: "getServerInfo",
+
+
     }
 
 
     for (var key in this.command)(function(key) {
         global[key] = function(parameters, callbackResponse) {
-
-            //Apply Logs
-            winston.log("info", "EMS API function command ");
-
             self.sendCommand(key, parameters, callbackResponse);
         };
     })(key);

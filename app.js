@@ -19,9 +19,67 @@ var evowebservices = require('./routes/evowebservices');
 
 var app = express();
 
+//Set winston
+var winston = require('winston');
+
+var jsonComment = require('comment-json');
+var fs = require('fs');
+
+var path = require('path');
+var fileLogging = path.join(__dirname, '/config/logging.json');
+
+var configLog = jsonComment.parse(fs.readFileSync(fileLogging), null, true);
+
+winston.addColors({
+    silly: 'blue',
+    debug: 'gray',
+    verbose: 'magenta',
+    info: 'green',
+    warn: 'yellow',
+    error: 'red'
+});
+
+winston.remove(winston.transports.Console);
+
+var logFileName = path.join(__dirname, '/logs/evowebservices.') + process.pid + "." + new Date().getTime() + "-" + ".log";
+
+// set winston log
+winston.add(winston.transports.File, {
+    level: configLog.options.level,
+    filename: logFileName,
+    handleExceptions: configLog.options.handleExceptions,
+    json: configLog.options.json,
+    maxsize: configLog.options.maxsize,
+    timestamp: function () {
+
+        var d = new Date();
+        var dISO = d.toISOString();
+
+        var timestamp = dISO + " - " + process.pid;
+
+        return timestamp;
+    }
+});
+
+winston.add(winston.transports.Console, {
+    level: configLog.options.level,
+    handleExceptions: configLog.options.handleExceptions,
+    colorize: true
+});
+
+winston.stream = {
+    write: function(message, encoding){ 
+        winston.info("[evowebservices] "+message.trim());
+    }
+};
+
+app.use(require("morgan")("combined", { "stream": winston.stream }));
+
 process.on('uncaughtException', function(err) {
     console.log( " UNCAUGHT EXCEPTION " );
     console.log( "[Inside 'uncaughtException' event] " + err.stack || err.message );
+    winston.log("error"," UNCAUGHT EXCEPTION " );
+    winston.log("error","[Inside 'uncaughtException' event] " + err.stack || err.message );
 });
 
 //set to a different port
@@ -82,5 +140,8 @@ app.use(function(request, response, next){
         next();
     }));
 });
+
+console.log("[webservices] starting app ");
+winston.log("verbose", "[webservices] starting app ");
 
 module.exports = app;

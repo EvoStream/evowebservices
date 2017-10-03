@@ -14,6 +14,7 @@ var winston = require('winston');
 var fs = require('fs');
 var path = require('path');
 
+
 /*
  * Stream Recorder Plugin
  */
@@ -30,10 +31,9 @@ util.inherits(StreamRecorder, BasePlugin);
  */
 StreamRecorder.prototype.init = function(settings) {
 
-    //Apply Logs
-    winston.log("info", "StreamRecorder.prototype.init ");
-
+    winston.log("info", "[webservices] streamrecorder: init ");
     this.settings = settings;
+    
 };
 
 
@@ -43,192 +43,197 @@ StreamRecorder.prototype.init = function(settings) {
  * @return boolean
  */
 StreamRecorder.prototype.processEvent = function(event) {
+    winston.log("info", "[webservices] streamrecorder: processEvent ");
 
-    //Apply Logs
-    winston.log("info", "StreamRecorder.prototype.processEvent ");
+    var StreamRecorder = this;
 
-    var self = this;
-    var ems = require("../core_modules/ems-api-core")(null);
+    var eventDataArray = [];
+    eventDataArray.push(event);
 
-    //Process for New Stream created
-    if (event.type == 'inStreamCreated') {
+    var async = require("async");
+    async.mapSeries(eventDataArray,
+        function (eventData, callback) {
+            winston.log("info", "[webservices] streamrecorder: processEvent eventData " + JSON.stringify(eventData));
 
-        //Apply the logs
-        winston.log("info", "StreamRecorder inStreamCreated");
+            var ipApiProxy = require(path.join(__dirname, "../core_modules/ems-api-proxy"));
+            var ems = require(path.join(__dirname, "../core_modules/ems-api-core"))(ipApiProxy.url);
 
-        //1. Get LocalStreamName
-        localStreamName = event.payload.name;
+            //Process for New Stream created
+            if (eventData.type == 'inStreamCreated') {
 
-        //2. Execute Record Stream
-        //Check if file location is a valid directory
-        if (fs.lstatSync(this.settings.file_location).isDirectory() == false) {
-            winston.log('error', "Evowebservices Error: The file location for recorded files is invalid");
-        }
+                //1. Get LocalStreamName
+                localStreamName = eventData.payload.name;
 
-        var recordFileDirectory = this.settings.file_location + path.sep + localStreamName;
+                //2. Execute Record Stream
+                if ((StreamRecorder.settings.file_location === null)) {
+                    winston.log("error", "[webservices] streamrecorder: file location for recorded files is required ");
+                    callback(false);
+                }
 
-        //Apply the logs
-        winston.log("verbose", "StreamRecorder localStreamName " + localStreamName);
-        winston.log("verbose", "StreamRecorder recordFileDirectory " + recordFileDirectory);
+                if ((StreamRecorder.settings.file_location === "")) {
+                    winston.log("error", "[webservices] streamrecorder: file location for recorded files is required ");
+                    callback(false);
+                }
 
-        //Execute command for record stream
-        var parameters = {
-            localStreamName: localStreamName,
-            pathtofile: recordFileDirectory,
-            overwrite: 0,
-            keepAlive: 1,
-            type: 'mp4',
-            _localStreamName: localStreamName
-        };
+                try {
+                    winston.log("info", "[webservices] streamrecorder: checking if file directory is valid " +(fs.lstatSync(StreamRecorder.settings.file_location).isDirectory()) );
+                }
+                catch (e) {
+                    winston.log('error', "[webservices] streamrecorder: the file location for recorded files is invalid");
+                    callback(false);
+                }
 
-        ems.record(parameters, function(result) {
-            winston.log("info", "StreamRecorder record status " + result.status);
-
-            if (result.status == "FAIL") {
-                winston.log("error", "StreamRecorder record status " + result.status);
-
-                return false;
-            }
-
-        });
-    }
-
-    //Process for OutStreamCreated for the recorded stream
-    if (event.type == 'outStreamCreated') {
-
-        //Apply the logs
-        winston.log("info", "StreamRecorder outStreamCreated");
-
-        var periodTime = parseInt(this.settings.period_time, 10);
-
-
-        //1. Get the Recorded stream
-        recordedStream = event.payload.recordSettings._localStreamName;
-        localStreamName = event.payload.name;
-        uniqueId = event.payload.uniqueId;
-
-        //Check if the localStreamName is the recorded stream, 
-        //if not exit the plugin
-        if (localStreamName !== recordedStream) {
-            return true;
-        }
-
-        //Apply the logs
-        winston.log("verbose", "StreamRecorder periodTime " + periodTime);
-        winston.log("verbose", "StreamRecorder localStreamName " + localStreamName);
-        winston.log("verbose", "StreamRecorder recordedStream " + recordedStream);
-        winston.log("verbose", "StreamRecorder uniqueId " + uniqueId);
-
-        //2. Execute creation of timer
-        var parameters = null;
-        ems.listTimers(parameters, function(result) {
-
-            if (result.data != null) {
-                var timerListData = result.data;
+                var recordFileDirectory = StreamRecorder.settings.file_location + path.sep + localStreamName;
 
                 //Apply the logs
-                winston.log("verbose", "StreamRecorder timerListData " + JSON.stringify(timerListData));
+                winston.log("verbose", "[webservices] streamrecorder: localStreamName " + localStreamName);
+                winston.log("verbose", "[webservices] streamrecorder: recordFileDirectory " + recordFileDirectory);
 
-                //Check that the stream is not yet set with a timer
-                for (var i in timerListData) {
+                //Execute command for record stream
+                var parameters = {
+                    localStreamName: localStreamName,
+                    pathtofile: recordFileDirectory,
+                    overwrite: 0,
+                    keepAlive: 1,
+                    type: 'mp4',
+                    _localStreamName: localStreamName
+                };
 
-                    if (timerListData[i]._uniqueId == uniqueId) {
-                        //if a timer is already set to the stream, exit plugin 
-                        //by returning true
-                        return true;
-                    }
-                }
+                ems.record(parameters, function(result) {
+                    winston.log("info", "[webservices] streamrecorder: record result - " + JSON.stringify(result));
+
+                    callback(true);
+
+                });
             }
 
-            var parameters = {
-                value: periodTime,
-                _uniqueId: uniqueId
-            };
+            //Process for OutStreamCreated for the recorded stream
+            if (eventData.type == 'outStreamCreated') {
+                var periodTime = parseInt(StreamRecorder.settings.period_time, 10);
 
-            ems.setTimer(parameters, function(result) {
-                winston.log("info", "StreamRecorder setTimer status " + result.status);
+                //1. Get the Recorded stream
+                recordedStream = eventData.payload.recordSettings._localStreamName;
+                localStreamName = eventData.payload.name;
+                uniqueId = eventData.payload.uniqueId;
 
-                if (result.status == "FAIL") {
-                    winston.log("error", "StreamRecorder setTimer status " + result.status);
-
-                    return false;
+                //Check if the localStreamName is the recorded stream,
+                //if not exit the plugin
+                if (localStreamName !== recordedStream) {
+                    callback(true);
                 }
 
-            });
+                //Apply the logs
+                winston.log("verbose", "[webservices] streamrecorder: periodTime - " + periodTime);
+                winston.log("verbose", "[webservices] streamrecorder: localStreamName - " + localStreamName);
+                winston.log("verbose", "[webservices] streamrecorder: recordedStream - " + recordedStream);
+                winston.log("verbose", "[webservices] streamrecorder: uniqueId - " + uniqueId);
 
-        });
-    }
+                //2. Execute creation of timer
+                var parameters = null;
+                ems.listTimers(parameters, function(result) {
 
-    //Process when timer is triggered
-    if (event.type == "timerTriggered") {
+                    if (result.data != null) {
+                        var timerListData = result.data;
 
-        //Apply the logs
-        winston.log("info", "StreamRecorder timerTriggered");
+                        winston.log("info", "[webservices] streamrecorder: timerListData - " + JSON.stringify(timerListData));
 
-        //1. Get uniqueId from a parameter set by the Set Timer 
-        _uniqueId = event.payload._uniqueId;
+                        //Check that the stream is not yet set with a timer
+                        for (var i in timerListData) {
 
-        //Apply the logs
-        winston.log("verbose", "StreamRecorder _uniqueId " + _uniqueId);
-
-
-        //Remove the timer 
-        var parameters = null;
-        ems.listTimers(parameters, function(result) {
-
-
-            if (result.data != null) {
-                var timerListData = result.data;
-
-
-
-                //Get the timer id using the _localStreamName and remove it
-                for (var i in timerListData) {
-
-                    //Apply the logs
-                    winston.log("verbose", "StreamRecorder timerListData " + JSON.stringify(timerListData));
-
-                    if (timerListData[i]._uniqueId == _uniqueId) {
-                        //Execute api for removing a timer
-                        var parameters = {
-                            id: timerListData[i].timerId
-                        };
-                        ems.removeTimer(parameters, function(result) {
-                            winston.log("info", "StreamRecorder removeTimer status " + result.status);
-
-                            if (result.status == "FAIL") {
-                                winston.log("error", "StreamRecorder removeTimer status " + result.status);
-
-                                return false;
+                            if (timerListData[i]._uniqueId == uniqueId) {
+                                //if a timer is already set to the stream, exit plugin
+                                //by returning true
+                                callback(true);
                             }
-
-                            //Execute ShutdownStream using the uniqueId
-                            var parameters = {
-                                id: _uniqueId,
-                                permanently: 0
-                            };
-
-                            ems.shutdownStream(parameters, function(result) {
-
-                                winston.log("info", "StreamRecorder shutdownStream status " + result.status);
-
-                                if (result.status == "SUCCESS") {
-
-                                    var localStreamName = result.data.streamInfo.recordSettings.localStreamName;
-                                    var recordFileDirectory = result.data.streamInfo.pathToFile;
-
-                                }
-                            });
-                        });
+                        }
                     }
-                }
+
+                    var parameters = {
+                        value: periodTime,
+                        _uniqueId: uniqueId
+                    };
+
+                    ems.setTimer(parameters, function(result) {
+                        winston.log("info", "[webservices] streamrecorder: setTimer result - " + JSON.stringify(result));
+
+                        callback(true);
+
+                    });
+
+                });
             }
-        });
-    }
+
+            //Process when timer is triggered
+            if (eventData.type == "timerTriggered") {
+
+                //1. Get uniqueId from a parameter set by the Set Timer
+                _uniqueId = eventData.payload._uniqueId;
+
+                //Apply the logs
+                winston.log("verbose", "[webservices] streamrecorder:  _uniqueId - " + _uniqueId);
 
 
-    //Return True if process execution is done
-    return true;
+                //Remove the timer
+                var parameters = null;
+                ems.listTimers(parameters, function(result) {
+
+                    if (result.data != null) {
+                        var timerListData = result.data;
+
+                        //Get the timer id using the _localStreamName and remove it
+                        for (var i in timerListData) {
+
+                            //Apply the logs
+                            winston.log("verbose", "[webservices] streamrecorder: timerListData - " + JSON.stringify(timerListData));
+
+                            if (timerListData[i]._uniqueId == _uniqueId) {
+                                //Execute api for removing a timer
+                                var parameters = {
+                                    id: timerListData[i].timerId
+                                };
+                                ems.removeTimer(parameters, function(result) {
+                                    winston.log("info", "[webservices] streamrecorder: removeTimer result - " + JSON.stringify(result));
+
+                                    if (result.status == "FAIL") {
+                                        winston.log("error", "[webservices] streamrecorder: removeTimer result - " + JSON.stringify(result));
+
+                                        callback(false);
+                                    }
+
+                                    //Execute ShutdownStream using the uniqueId
+                                    var parameters = {
+                                        id: _uniqueId,
+                                        permanently: 0
+                                    };
+
+                                    ems.shutdownStream(parameters, function(result) {
+
+                                        winston.log("info", "[webservices] streamrecorder: shutdownStream result - " + JSON.stringify(result));
+
+                                        if (result.status == "SUCCESS") {
+
+                                            var localStreamName = result.data.streamInfo.recordSettings.localStreamName;
+                                            var recordFileDirectory = result.data.streamInfo.pathToFile;
+                                        }
+
+                                        callback(true);
+                                    });
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+        },
+        // 3rd param is the function to call when everything's done
+        function (status) {
+
+            winston.log("info", "[webservices] streamrecorder: all eventData done, status - " +status);
+            return status;
+
+        }
+    );
+
 
 };
 
@@ -238,11 +243,9 @@ StreamRecorder.prototype.processEvent = function(event) {
  * @return boolean
  */
 StreamRecorder.prototype.supportsEvent = function(eventType) {
-
-    //Apply Logs
-    winston.log("info", "StreamRecorder.prototype.supportsEvent ");
-
-
+    winston.log("info", "[webservices] streamrecorder: supportsEvent ");
+    winston.log("verbose", "[webservices] streamrecorder: supportsEvent eventType "+eventType);
+    
     //Validate that Plugin supports the Event
     if (eventType == 'inStreamCreated') {
         return true;

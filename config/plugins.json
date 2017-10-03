@@ -2,7 +2,7 @@
  * 
  * EvoStream Web Services
  * EvoStream, Inc.
- * (c) 2016 by EvoStream, Inc. (support@evostream.com)
+ * (c) 2017 by EvoStream, Inc. (support@evostream.com)
  * Released under the MIT License
  * 
  ***/
@@ -30,8 +30,8 @@
     "StreamRecorder": {
         "plugin_switch": "disabled",
         "parameters": {
-            "file_location": "C:\\xampp\\htdocs\\records",
-            "period_time": 30
+            "file_location": "F:\\EVOSTREAMMS\\evostreamms\\media",
+            "period_time": 3600
         }
     },    
 
@@ -40,16 +40,27 @@
  * Configurations for Load Balancer
  * --------------------------------------------------------------------------
  * plugin_switch = Enable/Disable a Plugin here  
- * destination_uri = The array of ip address where the inbound streams would be
+ * destination_ems_apiproxies = The array of ems api proxies where the inbound streams would be
  *                  replicated to
  * 
  */         
     "StreamLoadBalancer": {
-        "plugin_switch": "disabled", 
+        "plugin_switch": "enabled",
         "parameters": {
-            "destination_uri": [
-                "127.0.0.1",
-                "127.0.0.1"
+            "destination_ems_apiproxies": [
+                {
+                    "enable" : true,
+                    "authentication": "basic",
+                    "pseudoDomain": "apiproxy",
+                    "address": "192.168.2.193",
+                    "ewsPort": 8888,
+                    "userName": "username",
+                    "password": "password"
+                },
+                {
+                    "enable" : false,
+                    "address": "192.168.2.137"
+                }
             ]
         }
     },       
@@ -67,7 +78,7 @@
         "plugin_switch": "disabled",
         "parameters": {
             "token": "forwardthese",
-            "destination_uri": "127.0.0.1"
+            "destination_uri": ""
         }
     },       
 
@@ -124,9 +135,9 @@
     "AmazonDASHUpload": {
         "plugin_switch": "disabled",
         "parameters": {
-            "aws_access_key": "",
-            "aws_secret_key": "",
-            "default_bucket": ""
+            "aws_access_key": "AKIAIL2T7GS7LCJOWIKQ",
+            "aws_secret_key": "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",
+            "default_bucket": "ems-files"
         }
     }        
 }
